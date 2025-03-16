@@ -1,4 +1,5 @@
 use crate::mat_op;
+use itertools::izip;
 use rand::Rng;
 use rand_distr::StandardNormal;
 use std::iter::{once, repeat_with, zip};
@@ -68,6 +69,7 @@ impl NeuralNetwork {
         let mut z_s = Vec::new();
         let mut a_s = Vec::new();
         let mut current = x;
+        a_s.push(x.iter().copied().collect());
         for layer in &self.layers {
             let z = layer.output(current);
             let a = mat_op::vec_sigmoid(&z);
@@ -81,28 +83,24 @@ impl NeuralNetwork {
             &mat_op::vec_dsigmoid(z_s.last().unwrap()),
         );
         errors.push(error);
-        if self.layers.len() > 1 {
-            for (layer, z) in zip(&self.layers, z_s).rev().skip(1) {
-                let error = mat_op::vec_elementwise_prod(
-                    &mat_op::mat_vec_prod(&layer.weights, errors.last().unwrap()),
-                    &mat_op::vec_dsigmoid(&z),
-                );
-                errors.push(error)
-            }
+        for (layer, z) in zip(&self.layers, z_s).rev().skip(1) {
+            let error = mat_op::vec_elementwise_prod(
+                &mat_op::mat_vec_prod(&layer.weights, errors.last().unwrap()),
+                &mat_op::vec_dsigmoid(&z),
+            );
+            errors.push(error);
         }
         errors.reverse();
-        for i in 0..self.layers.len() {
-            self.layers[i].weights = mat_op::mat_sum(
-                &self.layers[i].weights,
-                &mat_op::vec_vec_prod(
-                    &mat_op::scal_vec_prod(&self.learn_rate, &errors[i]),
-                    &a_s[i],
-                ),
+        a_s.pop();
+        for (layer, a, error) in izip!(&mut self.layers, a_s, errors) {
+            layer.weights = mat_op::mat_sum(
+                &layer.weights,
+                &mat_op::scal_mat_prod(&self.learn_rate, &mat_op::vec_vec_prod(&error, &a)),
             );
-            self.layers[i].biases = mat_op::vec_sum(
-                &self.layers[i].biases,
-                &mat_op::scal_vec_prod(&self.learn_rate, &errors[i]),
-            )
+            layer.biases = mat_op::vec_sum(
+                &layer.biases,
+                &mat_op::scal_vec_prod(&self.learn_rate, &error),
+            );
         }
     }
 
@@ -111,11 +109,13 @@ impl NeuralNetwork {
             .iter()
             .enumerate()
             .max_by(|(_, a), (_, b)| a.total_cmp(b))
+            .map(|(idx, _)| idx)
             == self
                 .output(x)
                 .iter()
                 .enumerate()
                 .max_by(|(_, a), (_, b)| a.total_cmp(b))
+                .map(|(idx, _)| idx)
         {
             1.0
         } else {

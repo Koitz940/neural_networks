@@ -10,14 +10,12 @@ pub fn scal_mat_prod(x: &f64, a: &[Box<[f64]>]) -> Box<[Box<[f64]>]> {
 }
 
 pub fn vec_prod(a: &[f64], b: &[f64]) -> f64 {
-    assert!(a.len() == b.len());
+    assert_eq!(a.len(), b.len());
     zip(a, b).fold(0.0, |acc, (i, j)| i.mul_add(*j, acc))
 }
 
 pub fn mat_vec_prod(mat: &[Box<[f64]>], vector: &[f64]) -> Box<[f64]> {
-    if !mat.iter().all(|row| row.len() == vector.len()) {
-        panic!()
-    }
+    assert!(mat.iter().all(|row| row.len() == vector.len()));
     mat.iter().map(|a| vec_prod(a, vector)).collect()
 }
 
