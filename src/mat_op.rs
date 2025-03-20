@@ -15,20 +15,17 @@ pub fn vec_prod(a: &[f64], b: &[f64]) -> f64 {
 }
 
 pub fn mat_vec_prod(mat: &[Box<[f64]>], vector: &[f64]) -> Box<[f64]> {
-    assert!(mat.iter().all(|row| row.len() == vector.len()));
+    assert!(!mat.is_empty());
+    assert!(mat.iter().all(|a| vector.len() == a.len()));
     mat.iter().map(|a| vec_prod(a, vector)).collect()
 }
 
 pub fn transposed(mat: &[Box<[f64]>]) -> Box<[Box<[f64]>]> {
-    match mat.len() {
-        0 => Vec::new().into_boxed_slice(),
-        _ => match mat.iter().all(|row| row.len() == mat[0].len()) {
-            true => (0..mat[0].len())
-                .map(|i| mat.iter().map(|a| a[i]).collect())
-                .collect(),
-            false => panic!(),
-        },
-    }
+    assert!(!mat.is_empty());
+    assert!(mat.iter().all(|a| a.len() == mat[0].len()));
+    (0..mat[0].len())
+        .map(|j| (0..mat.len()).map(|i| mat[i][j]).collect())
+        .collect()
 }
 
 pub fn vec_sum(a: &[f64], b: &[f64]) -> Box<[f64]> {
