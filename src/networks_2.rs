@@ -28,14 +28,6 @@ impl Layer {
         Layer { weights, biases }
     }
 
-    pub fn amount_neurons(&self) -> usize {
-        self.biases.ncols()
-    }
-
-    pub fn amount_outputs(&self) -> usize {
-        self.weights.ncols()
-    }
-
     pub fn output(&self, input: &Matrix) -> Matrix {
         Matrix::sigmoid(&(&self.biases + &(&self.weights * input)))
     }
@@ -54,7 +46,7 @@ impl NeuralNetwork {
             .collect();
         NeuralNetwork {
             layers,
-            learn_rate: -1.0,
+            learn_rate: -0.1,
         }
     }
 
@@ -68,37 +60,41 @@ impl NeuralNetwork {
         let mut z_s = vec![input.clone()];
         let mut a_s = vec![input.clone()];
         for layer in &self.layers {
-            let z = &layer.biases + &(&layer.weights * input);
+            let c = &layer.weights * a_s.last().unwrap();
+            let z = &layer.biases.extendedcol(c.ncols()) + &c;
             let a = Matrix::sigmoid(&z);
             a_s.push(a);
             z_s.push(z);
         }
         let error = Matrix::elementwise_mult(
-            &(a_s.last().unwrap() + &Matrix::cons_prod(&expected, &-1.0)),
+            &(a_s.last().unwrap() + &Matrix::cons_prod(expected, &-1.0)),
             &Matrix::dsigmoid(z_s.last().unwrap()),
         );
         let mut errors = vec![error];
         z_s.pop();
         a_s.pop();
-        for (layer, z) in zip(&self.layers, z_s).rev() {
+        for (layer, z) in zip(&self.layers, z_s).rev().take(self.layers.len() - 1) {
             errors.push(Matrix::elementwise_mult(
                 &(&layer.weights.transposed() * errors.last().unwrap()),
                 &Matrix::dsigmoid(&z),
             ));
         }
         errors.reverse();
+        println!("{errors:?}");
 
         for (layer, error, a) in izip!(&mut self.layers, errors, a_s) {
-            let combined =
-                Matrix::transposed(&Matrix::sum_rows(&(&Matrix::transposed(&a) * &error)));
+            let combined = &error * &Matrix::transposed(&a);
+
             layer.weights +=
-                Matrix::cons_prod(&combined, &(&self.learn_rate / &(input.nrows() as f64)));
-            let avg_error = Matrix::transposed(&Matrix::sum_rows(&error));
+                Matrix::cons_prod(&combined, &(self.learn_rate / (input.nrows() as f64)));
+            let avg_error =
+                Matrix::into_matrix(error.rows().map(|x| vec![x.iter().sum()]).collect()).unwrap();
             layer.biases +=
-                Matrix::cons_prod(&avg_error, &(&self.learn_rate / &(input.nrows() as f64)));
+                Matrix::cons_prod(&avg_error, &(self.learn_rate / (input.nrows() as f64)));
+            println!("{layer:?}");
         }
     }
-    pub fn check_one(&self, input: Matrix, expected: Matrix) -> u32 {
+    pub fn check_one(&self, input: Matrix, expected: Matrix) -> f64 {
         let out = self.output(&input);
         let v = Matrix::transposed(&out).rows().next().unwrap().to_vec();
         let e = Matrix::transposed(&expected)
@@ -117,9 +113,9 @@ impl NeuralNetwork {
                 .unwrap()
                 .0
         {
-            1
+            1.0
         } else {
-            0
+            0.0
         }
     }
 }

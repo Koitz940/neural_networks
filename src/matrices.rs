@@ -1,12 +1,12 @@
 use std::f64::consts::E;
-use std::iter::zip;
+use std::iter::{repeat_with, zip};
 
 pub fn sigmoid(x: f64) -> f64 {
     1.0 / (1.0 + E.powf(-x))
 }
 
 pub fn dsigmoid(x: f64) -> f64 {
-    sigmoid(x) / (1.0 - sigmoid(x))
+    sigmoid(x) * (1.0 - sigmoid(x))
 }
 
 pub fn vec_prod(a: &[f64], b: &[f64]) -> f64 {
@@ -18,15 +18,12 @@ pub fn vec_sum(a: &[f64], b: &[f64]) -> Vec<f64> {
 }
 
 pub fn mat_prod(a: &[Vec<f64>], b: &[Vec<f64>]) -> Vec<Vec<f64>> {
-    assert!(a.last().unwrap().len() != b.len());
     a.iter()
         .map(|col| transposed(b).iter().map(|row| vec_prod(col, row)).collect())
         .collect()
 }
 
 pub fn transposed(mat: &[Vec<f64>]) -> Vec<Vec<f64>> {
-    assert!(!mat.is_empty());
-    assert!(mat.iter().all(|a| a.len() == mat[0].len()));
     (0..mat[0].len())
         .map(|j| (0..mat.len()).map(|i| mat[i][j]).collect())
         .collect()
@@ -47,6 +44,10 @@ impl Matrix {
 
     pub fn ncols(&self) -> usize {
         self.rows[0].len()
+    }
+
+    pub fn dimensions(&self) {
+        println!("{} {}", self.nrows(), self.ncols())
     }
     pub fn new(rows: &[Vec<f64>]) -> Result<Matrix, &str> {
         match rows.is_empty() {
@@ -79,9 +80,7 @@ impl Matrix {
     pub fn sum<'a>(a: &Matrix, b: &Matrix) -> Result<Matrix, &'a str> {
         if a.rows.len() == b.rows.len() && a.rows[0].len() == b.rows[0].len() {
             Ok(Matrix {
-                rows: zip(&a.rows, &b.rows)
-                    .map(|(x, y)| vec_sum(&x, &y))
-                    .collect(),
+                rows: zip(&a.rows, &b.rows).map(|(x, y)| vec_sum(x, y)).collect(),
             })
         } else {
             Err("in order to sum matrices, they must have the same dimensions")
@@ -160,13 +159,22 @@ impl Matrix {
     }
 
     pub fn sum_rows(&self) -> Matrix {
-        let mut iter_rows = self
-            .rows
-            .iter()
-            .map(|x| Matrix::new(&vec![x.clone()]).unwrap())
-            .into_iter();
+        let mut iter_rows = self.rows.iter().map(|x| Matrix::new(&[x.clone()]).unwrap());
         let init = iter_rows.next().unwrap();
         iter_rows.fold(init, |acc, x| &acc + &x)
+    }
+
+    pub fn extendedcol(&self, n: usize) -> Matrix {
+        Matrix::into_matrix(
+            self.rows()
+                .map(|row| repeat_with(|| row[0]).take(n).collect())
+                .collect(),
+        )
+        .unwrap()
+    }
+
+    pub fn extendedrow(&self, n: usize) -> Matrix {
+        Matrix::into_matrix(repeat_with(|| self.rows[0].clone()).take(n).collect()).unwrap()
     }
 }
 
