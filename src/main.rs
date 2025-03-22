@@ -1,4 +1,3 @@
-mod mat_op;
 mod matrices;
 mod network;
 
