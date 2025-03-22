@@ -1,9 +1,6 @@
 mod mat_op;
 mod matrices;
 mod network;
-mod networks_2;
-mod perceptrons;
-mod sigmoid;
 
 use std::fs::File;
 use std::io::{self, BufRead};
