@@ -64,10 +64,7 @@ impl NeuralNetwork {
             a_s.push(a);
             z_s.push(z);
         }
-        let error = Matrix::elementwise_mult(
-            &(a_s.last().unwrap() + &Matrix::cons_prod(expected, &-1.0)),
-            &Matrix::dsigmoid(z_s.last().unwrap()),
-        );
+        let error = a_s.last().unwrap() - expected;
         let mut errors = vec![error];
         z_s.pop();
         a_s.pop();

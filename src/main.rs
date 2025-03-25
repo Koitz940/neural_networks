@@ -8,38 +8,39 @@ use std::path::Path;
 
 use crate::network::NeuralNetwork;
 use matrices::Matrix;
+use rand::rngs::StdRng;
+use rand::seq::SliceRandom;
+use rand::SeedableRng;
 fn main() {
-    let mut net = NeuralNetwork::new(784, vec![16, 16, 10], -10.0);
-    fn train(m: usize, n: &mut NeuralNetwork) {
+    let mut net = NeuralNetwork::new(784, vec![30, 10], -0.5);
+    fn train(epoch_amount: usize, batch_size: usize, net: &mut NeuralNetwork) {
         println!("starting learning...");
+        let seed: [u8; 32] = rand::random(); // You can use any array of 32 bytes
+
+        // Create two RNGs with the same seed
+        let mut rng1 = StdRng::from_seed(seed);
+        let mut rng2 = StdRng::from_seed(seed);
+
         if let Ok(lines) = read_lines("mnist_train.txt") {
-            let mut minibatch: Vec<Vec<f64>> = Vec::new();
-            let mut labels: Vec<Vec<f64>> = Vec::new();
-            let mut i = 0;
+            let mut imgs = Vec::new();
+            let mut labels = Vec::new();
             for line in lines.map_while(Result::ok) {
                 let mut digits = line.split(",");
                 let label = vec_label(digits.next().unwrap().parse().unwrap());
                 let img = digits
                     .map(|d| d.parse::<f64>().unwrap() / 256.0)
                     .collect::<Vec<f64>>();
-                minibatch.push(img);
+                imgs.push(img);
                 labels.push(label);
-
-                i += 1;
-                if i == m {
-                    n.learn(
-                        &Matrix::into_matrix(minibatch.clone()).unwrap(),
-                        &Matrix::into_matrix(labels.clone()).unwrap(),
-                    );
-                    minibatch = Vec::new();
-                    labels = Vec::new();
-                    i = 0;
-                }
             }
-            if i != 0 {
-                n.learn(
-                    &Matrix::into_matrix(minibatch.clone()).unwrap(),
-                    &Matrix::into_matrix(labels.clone()).unwrap(),
+            for _ in 0..epoch_amount {
+                imgs.shuffle(&mut rng1);
+                labels.shuffle(&mut rng2);
+                let sample_imgs = &imgs[..batch_size];
+                let sample_labels = &labels[..batch_size];
+                net.learn(
+                    &Matrix::new(sample_imgs).unwrap(),
+                    &Matrix::new(sample_labels).unwrap(),
                 );
             }
             println!("reading completed")
@@ -47,7 +48,7 @@ fn main() {
     }
 
     fn test(n: &NeuralNetwork) {
-        println!("starting testing");
+        println!("starting testing...");
         let mut count = 0.0;
         let mut total = 0.0;
         if let Ok(lines) = read_lines("mnist_test.txt") {
@@ -71,7 +72,7 @@ fn main() {
         )
     }
 
-    train(100, &mut net);
+    train(100000, 30, &mut net);
     test(&net)
 }
 

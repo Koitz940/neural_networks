@@ -17,6 +17,10 @@ pub fn vec_sum(a: &[f64], b: &[f64]) -> Vec<f64> {
     zip(a, b).map(|(x, y)| x + y).collect()
 }
 
+pub fn vec_sub(a: &[f64], b: &[f64]) -> Vec<f64> {
+    zip(a, b).map(|(x, y)| x - y).collect()
+}
+
 pub fn mat_prod(a: &[Vec<f64>], b: &[Vec<f64>]) -> Vec<Vec<f64>> {
     a.iter()
         .map(|col| transposed(b).iter().map(|row| vec_prod(col, row)).collect())
@@ -87,11 +91,33 @@ impl Matrix {
         }
     }
 
+    pub fn sub<'a>(a: &Matrix, b: &Matrix) -> Result<Matrix, &'a str> {
+        if a.rows.len() == b.rows.len() && a.rows[0].len() == b.rows[0].len() {
+            Ok(Matrix {
+                rows: zip(&a.rows, &b.rows).map(|(x, y)| vec_sub(x, y)).collect(),
+            })
+        } else {
+            Err("in order to subtract matrices, they must have the same dimensions")
+        }
+    }
+
     pub fn sum_inplace(&mut self, a: &Matrix) {
         if a.rows[0].len() == self.rows[0].len() && self.rows.len() == a.rows.len() {
             for i in 0..self.rows.len() {
                 for j in 0..self.rows[i].len() {
                     self.rows[i][j] += a.rows[i][j]
+                }
+            }
+        } else {
+            panic!()
+        }
+    }
+
+    pub fn sub_inplace(&mut self, a: &Matrix) {
+        if a.rows[0].len() == self.rows[0].len() && self.rows.len() == a.rows.len() {
+            for i in 0..self.rows.len() {
+                for j in 0..self.rows[i].len() {
+                    self.rows[i][j] -= a.rows[i][j]
                 }
             }
         } else {
@@ -203,5 +229,19 @@ impl std::ops::Mul for &Matrix {
 impl std::ops::MulAssign for Matrix {
     fn mul_assign(&mut self, rhs: Self) {
         self.mult_inplace(&rhs);
+    }
+}
+
+impl std::ops::Sub for &Matrix {
+    type Output = Matrix;
+
+    fn sub(self, rhs: Self) -> Self::Output {
+        Matrix::sub(self, rhs).unwrap()
+    }
+}
+
+impl std::ops::SubAssign for Matrix {
+    fn sub_assign(&mut self, rhs: Self) {
+        self.sub_inplace(&rhs);
     }
 }
