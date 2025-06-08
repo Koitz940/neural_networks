@@ -1,16 +1,13 @@
 use std::f64::consts::E;
 use std::iter::{repeat_with, zip};
 
+
 pub fn sigmoid(x: f64) -> f64 {
     1.0 / (1.0 + E.powf(-x))
 }
 
 pub fn dsigmoid(x: f64) -> f64 {
     sigmoid(x) * (1.0 - sigmoid(x))
-}
-
-pub fn vec_prod(a: &[f64], b: &[f64]) -> f64 {
-    zip(a, b).fold(0.0, |acc, (i, j)| i.mul_add(*j, acc))
 }
 
 pub fn vec_sum(a: &[f64], b: &[f64]) -> Vec<f64> {
@@ -22,9 +19,13 @@ pub fn vec_sub(a: &[f64], b: &[f64]) -> Vec<f64> {
 }
 
 pub fn mat_prod(a: &[Vec<f64>], b: &[Vec<f64>]) -> Vec<Vec<f64>> {
-    a.iter()
-        .map(|col| transposed(b).iter().map(|row| vec_prod(col, row)).collect())
-        .collect()
+    let mut result: Vec<Vec<f64>> = repeat_with(|| Vec::new()).take(a.len()).collect();
+    for row in 0..a.len(){
+        for column in 0..b[0].len(){
+            result[row].push((0..a[0].len()).fold(0.0, |acc, ind| a[row][ind].mul_add(b[ind][column], acc)))
+        }
+    }
+    result
 }
 
 pub fn transposed(mat: &[Vec<f64>]) -> Vec<Vec<f64>> {

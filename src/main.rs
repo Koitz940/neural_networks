@@ -4,6 +4,7 @@ mod network;
 use std::fs::File;
 use std::io::Read;
 use std::iter::repeat_with;
+use std::path::PathBuf;
 
 use crate::network::NeuralNetwork;
 use matrices::Matrix;
@@ -22,28 +23,44 @@ fn main() {
         let mut rng1 = StdRng::from_seed(seed);
         let mut rng2 = StdRng::from_seed(seed);
 
-        let mut file = File::open("data\\train-images.idx3-ubyte").expect("Failed to open file");
+        let train_img_path = ["data", "train-images.idx3-ubyte"]
+            .iter()
+            .collect::<PathBuf>();
+        let mut file = File::open(train_img_path).expect("Failed to open file");
+
         let mut contents = Vec::new();
         file.read_to_end(&mut contents)
             .expect("Failed to read file");
+
         let contents: Vec<f64> = contents.into_iter().map(|x| (x as f64) / 256.0).collect();
+
         let mut imgs: Vec<Vec<f64>> = contents[16..]
             .chunks_exact(784)
             .map(|i| i.to_vec())
             .collect();
-        let mut file = File::open("data\\train-labels-idx1-ubyte").expect("Failed to open file");
+
+        let train_lbl_path = ["data", "train-labels.idx1-ubyte"]
+            .iter()
+            .collect::<PathBuf>();
+        let mut file = File::open(train_lbl_path).expect("Failed to open file");
+
         let mut contents = Vec::new();
         file.read_to_end(&mut contents)
             .expect("Failed to read file");
+
         let mut labels = Vec::new();
+
         for d in contents.iter().skip(8) {
             labels.push(vec_label(*d as usize))
         }
+
         for _ in 0..epoch_amount {
             imgs.shuffle(&mut rng1);
             labels.shuffle(&mut rng2);
+
             let sample_imgs = &imgs[..batch_size];
             let sample_labels = &labels[..batch_size];
+
             net.learn(
                 &Matrix::new(sample_imgs).unwrap(),
                 &Matrix::new(sample_labels).unwrap(),
@@ -56,23 +73,37 @@ fn main() {
         println!("starting testing...");
         let mut count = 0.0;
         let mut total = 0.0;
-        let mut file = File::open("data\\t10k-images-idx3-ubyte").expect("Failed to open file");
+        
+        let test_img_path = ["data", "t10k-images.idx3-ubyte"]
+            .iter()
+            .collect::<PathBuf>();
+        let mut file = File::open(test_img_path).expect("Failed to open file");
+
         let mut contents = Vec::new();
         file.read_to_end(&mut contents)
             .expect("Failed to read file");
+
         let contents: Vec<f64> = contents.into_iter().map(|x| (x as f64) / 256.0).collect();
+
         let imgs: Vec<Vec<f64>> = contents[16..]
             .chunks_exact(784)
             .map(|i| i.to_vec())
             .collect();
-        let mut file = File::open("data\\t10k-labels-idx1-ubyte").expect("Failed to open file");
+        
+        let test_lbl_path = ["data", "t10k-labels.idx1-ubyte"]
+            .iter()
+            .collect::<PathBuf>();
+        let mut file = File::open(test_lbl_path).expect("Failed to open file");
+
         let mut contents = Vec::new();
         file.read_to_end(&mut contents)
             .expect("Failed to read file");
+
         let mut labels = Vec::new();
         for d in contents.iter().skip(8) {
             labels.push(vec_label(*d as usize))
         }
+
         for (img, label) in zip(imgs, labels) {
             count += n.check_one(
                 Matrix::into_matrix(vec![img]).unwrap(),
@@ -87,7 +118,7 @@ fn main() {
         )
     }
 
-    train(10000, 30, &mut net);
+    train(2000, 30, &mut net);
     test(&net)
 }
 
