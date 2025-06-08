@@ -58,8 +58,7 @@ impl NeuralNetwork {
         let mut a_s = vec![input.clone()];
         for layer in &self.layers {
             let c = a_s.last().unwrap() * &layer.weights;
-            assert!(!c.rows().last().unwrap()[0].is_nan(), "c");
-            let z = &layer.biases.extendedrow(c.nrows()) + &c;
+            let z = c.sum_all_rows(&layer.biases);
             let a = Matrix::sigmoid(&z);
             a_s.push(a);
             z_s.push(z);
@@ -70,14 +69,14 @@ impl NeuralNetwork {
         a_s.pop();
         for (layer, z) in zip(&self.layers, z_s).rev().take(self.layers.len() - 1) {
             errors.push(Matrix::elementwise_mult(
-                &(errors.last().unwrap() * &layer.weights.transposed()),
+                &(Matrix::t2mult(errors.last().unwrap(), &layer.weights).unwrap()),
                 &Matrix::dsigmoid(&z),
             ));
         }
         errors.reverse();
 
         for (layer, error, a) in izip!(&mut self.layers, errors, a_s) {
-            let combined = &a.transposed() * &error;
+            let combined = Matrix::t1mult(&a, &error).unwrap();
             layer.weights +=
                 Matrix::cons_prod(&combined, &(self.learn_rate / (input.nrows() as f64)));
             let avg_error = Matrix::into_matrix(vec![error

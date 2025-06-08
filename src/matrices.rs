@@ -18,14 +18,34 @@ pub fn vec_sub(a: &[f64], b: &[f64]) -> Vec<f64> {
     zip(a, b).map(|(x, y)| x - y).collect()
 }
 
+pub fn vec_prod(a: &[f64], b: &[f64]) -> f64{
+    zip(a, b).fold(0.0, |acc, (i, j)| i.mul_add(*j, acc))
+}
+
 pub fn mat_prod(a: &[Vec<f64>], b: &[Vec<f64>]) -> Vec<Vec<f64>> {
-    let mut result: Vec<Vec<f64>> = repeat_with(|| Vec::new()).take(a.len()).collect();
+    let mut result: Vec<Vec<f64>> = repeat_with(Vec::new).take(a.len()).collect();
     for row in 0..a.len(){
         for column in 0..b[0].len(){
             result[row].push((0..a[0].len()).fold(0.0, |acc, ind| a[row][ind].mul_add(b[ind][column], acc)))
         }
     }
     result
+}
+
+pub fn t1mat_prod(a: &[Vec<f64>], b: &[Vec<f64>]) -> Vec<Vec<f64>>{
+    let mut result: Vec<Vec<f64>> = repeat_with(Vec::new).take(a[0].len()).collect();
+    for row in 0..a[0].len(){
+        for col in 0..b[0].len(){
+            result[row].push((0..a.len()).fold(0.0, |acc, ind| a[ind][row].mul_add(b[ind][col], acc)))
+        }
+    }
+    result
+}
+
+pub fn t2mat_prod(a: &[Vec<f64>], b: &[Vec<f64>]) -> Vec<Vec<f64>>{
+    a.iter()
+        .map(|col| b.iter().map(|row| vec_prod(col, row)).collect())
+        .collect()
 }
 
 pub fn transposed(mat: &[Vec<f64>]) -> Vec<Vec<f64>> {
@@ -110,7 +130,7 @@ impl Matrix {
                 }
             }
         } else {
-            panic!()
+            panic!("meow")
         }
     }
 
@@ -136,10 +156,41 @@ impl Matrix {
         }
     }
 
+    pub fn t1mult<'a>(a: &Matrix, b: &Matrix) -> Result<Matrix, &'a str> {
+        if a.rows.len() == b.rows.len() {
+            Ok(Matrix {
+                rows: t1mat_prod(&a.rows, &b.rows),
+            })
+        } else {
+            Err("In this product of transposed times matrix, they don't have the same amount of rows")
+        }
+    }
+
+    pub fn t2mult<'a>(a: &Matrix, b: &Matrix) -> Result<Matrix, &'a str> {
+        if a.rows[0].len() == b.rows[0].len() {
+            Ok(Matrix {
+                rows: t2mat_prod(&a.rows, &b.rows),
+            })
+        } else {
+            Err("In this product of a matrix times transposed, rows don't have the same length")
+        }
+    }
+
     pub fn mult_inplace(&mut self, a: &Matrix) {
         assert!(self.rows[0].len() == a.rows.len());
         self.rows = mat_prod(&self.rows, &a.rows)
     }
+
+    pub fn t1mult_inplace(&mut self, a: &Matrix) {
+        assert!(self.rows[0].len() == a.rows[0].len());
+        self.rows = t1mat_prod(&self.rows, &a.rows)
+    }
+
+    pub fn t2mult_inplace(&mut self, a: &Matrix) {
+        assert!(self.rows[0].len() == a.rows[0].len());
+        self.rows = t2mat_prod(&self.rows, &a.rows)
+    }
+
 
     pub fn transposed(&self) -> Matrix {
         Matrix {
@@ -202,6 +253,11 @@ impl Matrix {
 
     pub fn extendedrow(&self, n: usize) -> Matrix {
         Matrix::into_matrix(repeat_with(|| self.rows[0].clone()).take(n).collect()).unwrap()
+    }
+
+    pub fn sum_all_rows(&self, other: &Matrix) -> Matrix{
+        assert!(other.ncols() == self.ncols());
+        Matrix { rows: self.rows().map(|row| vec_sum(row, &other.rows[0])).collect() }
     }
 }
 
