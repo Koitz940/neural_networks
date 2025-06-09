@@ -58,12 +58,23 @@ fn main() {
             imgs.shuffle(&mut rng1);
             labels.shuffle(&mut rng2);
 
-            let sample_imgs = &imgs[..batch_size];
-            let sample_labels = &labels[..batch_size];
+            let mut sample_imgs = Vec::with_capacity(784*batch_size);
+            for img in 0..batch_size{
+                for i in 0..784{
+                    sample_imgs.push(imgs[img][i])
+                }
+            }
+
+            let mut sample_labels = Vec::with_capacity(10*batch_size);
+            for label in 0..batch_size{
+                for i in 0..10{
+                    sample_labels.push(labels[label][i])
+                }
+            }
 
             net.learn(
-                &Matrix::new(sample_imgs).unwrap(),
-                &Matrix::new(sample_labels).unwrap(),
+                Matrix::into_matrix(sample_imgs, 784, batch_size).unwrap(),
+                Matrix::into_matrix(sample_labels, 10, batch_size).unwrap(),
             );
         }
         println!("reading completed")
@@ -106,8 +117,8 @@ fn main() {
 
         for (img, label) in zip(imgs, labels) {
             count += n.check_one(
-                Matrix::into_matrix(vec![img]).unwrap(),
-                Matrix::into_matrix(vec![label]).unwrap(),
+                Matrix::into_matrix(img, 784, 1).unwrap(),
+                Matrix::into_matrix(label, 10, 1).unwrap(),
             );
             total += 1.0
         }

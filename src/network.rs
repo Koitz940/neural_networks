@@ -13,18 +13,12 @@ pub struct Layer {
 impl Layer {
     pub fn new(amount_neurons: usize, amount_weights: usize) -> Layer {
         let mut rng = rand::rng();
-        let rows = repeat_with(|| {
-            repeat_with(|| rng.sample::<f64, _>(StandardNormal))
-                .take(amount_neurons)
-                .collect()
-        })
-        .take(amount_weights)
-        .collect();
-        let weights = Matrix::into_matrix(rows).unwrap();
-        let rows = vec![repeat_with(|| rng.sample::<f64, _>(StandardNormal))
+        let buffer = repeat_with(|| rng.sample::<f64, _>(StandardNormal)).take(amount_neurons*amount_weights).collect();
+        let weights = Matrix::into_matrix(buffer,  amount_neurons, amount_weights).unwrap();
+        let rows = repeat_with(|| rng.sample::<f64, _>(StandardNormal))
             .take(amount_neurons)
-            .collect()];
-        let biases = Matrix::into_matrix(rows).unwrap();
+            .collect();
+        let biases = Matrix::into_matrix(rows, amount_neurons, 1).unwrap();
         Layer { weights, biases }
     }
 
@@ -53,20 +47,24 @@ impl NeuralNetwork {
         layer_iter.fold(init, |acc, x| x.output(&acc))
     }
 
-    pub fn learn(&mut self, input: &Matrix, expected: &Matrix) {
+    pub fn learn(&mut self, input: Matrix, expected: Matrix) {
         let mut z_s = vec![input.clone()];
         let mut a_s = vec![input.clone()];
+
         for layer in &self.layers {
-            let c = a_s.last().unwrap() * &layer.weights;
-            let z = c.sum_all_rows(&layer.biases);
+            let mut z = a_s.last().unwrap() * &layer.weights;
+            z.sum_all_rows(&layer.biases);
             let a = Matrix::sigmoid(&z);
             a_s.push(a);
             z_s.push(z);
         }
-        let error = a_s.last().unwrap() - expected;
+
+        let error = a_s.last().unwrap() - &expected;
         let mut errors = vec![error];
+
         z_s.pop();
         a_s.pop();
+
         for (layer, z) in zip(&self.layers, z_s).rev().take(self.layers.len() - 1) {
             errors.push(Matrix::elementwise_mult(
                 &(Matrix::t2mult(errors.last().unwrap(), &layer.weights).unwrap()),
@@ -76,29 +74,25 @@ impl NeuralNetwork {
         errors.reverse();
 
         for (layer, error, a) in izip!(&mut self.layers, errors, a_s) {
-            let combined = Matrix::t1mult(&a, &error).unwrap();
-            layer.weights +=
-                Matrix::cons_prod(&combined, &(self.learn_rate / (input.nrows() as f64)));
-            let avg_error = Matrix::into_matrix(vec![error
-                .transposed()
-                .rows()
-                .map(|x| x.iter().sum())
-                .collect()])
-            .unwrap();
-            layer.biases +=
-                Matrix::cons_prod(&avg_error, &(self.learn_rate / (input.nrows() as f64)));
+            let mut combined = Matrix::t1mult(&a, &error).unwrap();
+            let t = self.learn_rate / (input.nrows() as f64);
+            combined.cons_prod(t);
+            layer.weights += combined;
+            let mut avg_error = Matrix::sum_of_cols(&error);
+            avg_error.cons_prod(self.learn_rate / (input.nrows() as f64));
+            layer.biases += avg_error;
         }
     }
+
     pub fn check_one(&self, input: Matrix, expected: Matrix) -> f64 {
-        let out = self.output(&input);
-        let v = out.rows().next().unwrap().to_vec();
-        let e = expected.rows().next().unwrap().to_vec();
+        let out = self.output(&input).to_vec();
+        let e = expected.to_vec();
         if e.iter()
             .enumerate()
             .max_by(|(_, x), (_, y)| x.total_cmp(y))
             .unwrap()
             .0
-            == v.iter()
+            == out.iter()
                 .enumerate()
                 .max_by(|(_, x), (_, y)| x.total_cmp(y))
                 .unwrap()
