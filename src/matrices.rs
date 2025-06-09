@@ -232,10 +232,10 @@ impl Matrix {
 
     pub fn sum_of_cols(&self) -> Matrix{
         let mut buffer = Vec::with_capacity(self.row_size);
-        for i in 0..self.nrows(){
+        for i in 0..self.ncols(){
             let mut x = 0.0;
-            for j in 0..self.ncols(){
-                x += self.buffer[j + i*self.row_size]
+            for j in 0..self.nrows(){
+                x += self.buffer[i + j*self.row_size]
             }
             buffer.push(x)
         }
