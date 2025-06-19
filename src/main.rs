@@ -14,7 +14,7 @@ use rand::SeedableRng;
 use std::iter::zip;
 
 fn main() {
-    let mut net = NeuralNetwork::new(784, vec![30, 10], -1.0);
+    let mut net = NeuralNetwork::new(784, vec![100, 10], 1.5, 0.01);
     fn train(epoch_amount: usize, batch_size: usize, net: &mut NeuralNetwork) {
         println!("starting learning...");
         let seed: [u8; 32] = rand::random(); // You can use any array of 32 bytes
@@ -80,12 +80,7 @@ fn main() {
         println!("reading completed")
     }
 
-    fn test(n: &NeuralNetwork) {
-        println!("starting testing...");
-        let mut count = 0.0;
-        let mut total = 0.0;
-        
-        let test_img_path = ["data", "t10k-images.idx3-ubyte"]
+     let test_img_path = ["data", "t10k-images.idx3-ubyte"]
             .iter()
             .collect::<PathBuf>();
         let mut file = File::open(test_img_path).expect("Failed to open file");
@@ -115,7 +110,11 @@ fn main() {
             labels.push(vec_label(*d as usize))
         }
 
-        for (img, label) in zip(imgs, labels) {
+    fn test(n: &NeuralNetwork, images: Vec<Vec<f64>>, labs: Vec<Vec<f64>>) -> (u32, u32, f64) {
+        let mut count = 0.0;
+        let mut total = 0.0;
+
+        for (img, label) in zip(images, labs) {
             count += n.check_one(
                 Matrix::into_matrix(img, 784, 1).unwrap(),
                 Matrix::into_matrix(label, 10, 1).unwrap(),
@@ -123,14 +122,15 @@ fn main() {
             total += 1.0
         }
 
-        println!(
-            "success rate: {count}/{total}  ({}%)",
-            100.0 * count / total
-        )
+        (count as u32, total as u32, 100.0*count/total)
     }
 
-    train(2000, 30, &mut net);
-    test(&net)
+    train(2000, 100, &mut net);
+
+    println!("starting testing...");
+    
+    let results = test(&net, imgs, labels);
+    println!("success rate: {}/{}; {}%", results.0, results.1, results.2)
 }
 
 fn vec_label(d: usize) -> Vec<f64> {

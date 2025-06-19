@@ -223,6 +223,10 @@ impl Matrix {
         }
     }
 
+    pub fn cons_prod_copy(&self, x: f64) -> Matrix{
+        Matrix { buffer: self.buffer.iter().map(|i| i*x).collect(), row_size: self.row_size, col_size: self.col_size}
+    }
+
     pub fn sum_all_rows(&mut self, other: &Matrix){
         assert!(other.row_size == self.row_size && other.col_size == 1);
         for i in 0..(self.nrows()*self.ncols()){

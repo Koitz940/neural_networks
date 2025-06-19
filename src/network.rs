@@ -1,8 +1,8 @@
 use crate::matrices::Matrix;
 use itertools::izip;
 use rand::Rng;
-use rand_distr::StandardNormal;
-use std::iter::{once, repeat_with, zip};
+use rand_distr::{Normal, StandardNormal};
+use std::{ iter::{once, repeat_with, zip}};
 
 #[derive(Debug, Clone)]
 pub struct Layer {
@@ -13,7 +13,8 @@ pub struct Layer {
 impl Layer {
     pub fn new(amount_neurons: usize, amount_weights: usize) -> Layer {
         let mut rng = rand::rng();
-        let buffer = repeat_with(|| rng.sample::<f64, _>(StandardNormal)).take(amount_neurons*amount_weights).collect();
+        let normal = Normal::new(0.0, 1.0/(amount_weights as f64).sqrt()).unwrap();
+        let buffer = repeat_with(|| rng.sample::<f64, _>(normal)).take(amount_neurons*amount_weights).collect();
         let weights = Matrix::into_matrix(buffer,  amount_neurons, amount_weights).unwrap();
         let rows = repeat_with(|| rng.sample::<f64, _>(StandardNormal))
             .take(amount_neurons)
@@ -31,14 +32,15 @@ impl Layer {
 pub struct NeuralNetwork {
     pub layers: Vec<Layer>,
     pub learn_rate: f64,
+    pub regu_param: f64
 }
 
 impl NeuralNetwork {
-    pub fn new(input_size: usize, sizes: Vec<usize>, learn_rate: f64) -> NeuralNetwork {
+    pub fn new(input_size: usize, sizes: Vec<usize>, learn_rate: f64, regu_param: f64) -> NeuralNetwork {
         let layers = zip(once(&input_size).chain(&sizes), &sizes)
             .map(|(weights, size)| Layer::new(*size, *weights))
             .collect();
-        NeuralNetwork { layers, learn_rate }
+        NeuralNetwork { layers, learn_rate, regu_param }
     }
 
     pub fn output(&self, input: &Matrix) -> Matrix {
@@ -77,10 +79,11 @@ impl NeuralNetwork {
             let mut combined = Matrix::t1mult(&a, &error).unwrap();
             let t = self.learn_rate / (input.nrows() as f64);
             combined.cons_prod(t);
-            layer.weights += combined;
+            layer.weights.cons_prod(1.0 - self.learn_rate * self.regu_param / (input.nrows() as f64));
+            layer.weights -= combined;
             let mut avg_error = Matrix::sum_of_cols(&error);
             avg_error.cons_prod(self.learn_rate / (input.nrows() as f64));
-            layer.biases += avg_error;
+            layer.biases -= avg_error;
         }
     }
 
