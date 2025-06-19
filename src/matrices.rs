@@ -1,9 +1,6 @@
 use std::f64::consts::E;
 use std::iter::zip;
 
-
-
-
 pub fn num_sigmoid(x: f64) -> f64 {
     1.0 / (1.0 + E.powf(-x))
 }
@@ -16,7 +13,7 @@ pub fn num_dsigmoid(x: f64) -> f64 {
 pub struct Matrix {
     buffer: Vec<f64>,
     row_size: usize,
-    col_size: usize
+    col_size: usize,
 }
 
 impl Matrix {
@@ -34,52 +31,57 @@ impl Matrix {
     pub fn new(buffer: &[f64], row_size: usize, col_size: usize) -> Result<Matrix, &str> {
         match buffer.is_empty() | (row_size == 0) | (col_size == 0) {
             true => Err("matrix cannot be empty"),
-            false => match row_size*col_size == buffer.len(){
-                true => Ok(Matrix{
+            false => match row_size * col_size == buffer.len() {
+                true => Ok(Matrix {
                     row_size,
                     col_size,
-                    buffer: buffer.to_vec()
+                    buffer: buffer.to_vec(),
                 }),
-                false => Err("Mismatched matrix dimensions")
+                false => Err("Mismatched matrix dimensions"),
             },
         }
     }
 
-    pub fn into_matrix<'a>(buffer: Vec<f64>, row_size: usize, col_size: usize) -> Result<Matrix, &'a str> {
+    pub fn into_matrix<'a>(
+        buffer: Vec<f64>,
+        row_size: usize,
+        col_size: usize,
+    ) -> Result<Matrix, &'a str> {
         match buffer.is_empty() | (row_size == 0) | (col_size == 0) {
             true => Err("matrix cannot be empty"),
-            false => match row_size*col_size == buffer.len(){
-                true => Ok(Matrix{
+            false => match row_size * col_size == buffer.len() {
+                true => Ok(Matrix {
                     row_size,
                     col_size,
-                    buffer
+                    buffer,
                 }),
-                false => Err("Mismatched matrix dimensions")
+                false => Err("Mismatched matrix dimensions"),
             },
         }
     }
 
     pub fn sum<'a>(a: &Matrix, b: &Matrix) -> Result<Matrix, &'a str> {
-        if a.row_size == b.row_size && a.col_size == b.col_size{
-            Ok(Matrix{
-            row_size: a.row_size,
-            col_size: a.col_size,
-            buffer: zip(&a.buffer, &b.buffer).map(|(x, y)| x + y).collect()
-        })
+        if a.row_size == b.row_size && a.col_size == b.col_size {
+            Ok(Matrix {
+                row_size: a.row_size,
+                col_size: a.col_size,
+                buffer: zip(&a.buffer, &b.buffer).map(|(x, y)| x + y).collect(),
+            })
+        } else {
+            Err("Matricies cannot be summed as they don't have the same dimensions")
         }
-        else{Err("Matricies cannot be summed as they don't have the same dimensions")}
-
     }
 
     pub fn sub<'a>(a: &Matrix, b: &Matrix) -> Result<Matrix, &'a str> {
-        if a.row_size == b.row_size && a.col_size == b.col_size{
-            Ok(Matrix{
-            row_size: a.row_size,
-            col_size: a.col_size,
-            buffer: zip(&a.buffer, &b.buffer).map(|(x, y)| x - y).collect()
-        })
+        if a.row_size == b.row_size && a.col_size == b.col_size {
+            Ok(Matrix {
+                row_size: a.row_size,
+                col_size: a.col_size,
+                buffer: zip(&a.buffer, &b.buffer).map(|(x, y)| x - y).collect(),
+            })
+        } else {
+            Err("Matricies cannot be subtracted as they don't have the same dimensions")
         }
-        else{Err("Matricies cannot be subtracted as they don't have the same dimensions")}
     }
 
     pub fn sum_inplace(&mut self, a: &Matrix) {
@@ -103,64 +105,76 @@ impl Matrix {
     }
 
     pub fn mult<'a>(a: &Matrix, b: &Matrix) -> Result<Matrix, &'a str> {
-        if a.row_size == b.col_size{
+        if a.row_size == b.col_size {
             let mut buffer = Vec::with_capacity(a.col_size * b.row_size);
-            for i in 0..a.col_size{
-                for j in 0..b.row_size{
-                    buffer.push((0..a.row_size).fold(0.0, |acc, ind| a.buffer[ind + a.row_size*i].mul_add(b.buffer[j + ind*b.row_size], acc)))
+            for i in 0..a.col_size {
+                for j in 0..b.row_size {
+                    buffer.push((0..a.row_size).fold(0.0, |acc, ind| {
+                        a.buffer[ind + a.row_size * i].mul_add(b.buffer[j + ind * b.row_size], acc)
+                    }))
                 }
             }
-            Ok(Matrix{
+            Ok(Matrix {
                 buffer,
                 row_size: b.row_size,
-                col_size: a.col_size
+                col_size: a.col_size,
             })
+        } else {
+            Err("Matricies cannot be multiplied, amount of columns of the first one must match amount of rows of the second one (nxn)")
         }
-        else{Err("Matricies cannot be multiplied, amount of columns of the first one must match amount of rows of the second one (nxn)")}
     }
 
     pub fn t1mult<'a>(a: &Matrix, b: &Matrix) -> Result<Matrix, &'a str> {
-        if a.col_size == b.col_size{
+        if a.col_size == b.col_size {
             let mut buffer = Vec::with_capacity(a.row_size * b.row_size);
-            for i in 0..a.row_size{
-                for j in 0..b.row_size{
-                    buffer.push((0..a.col_size).fold(0.0, |acc, ind| a.buffer[i + ind*a.row_size].mul_add(b.buffer[j + ind*b.row_size], acc)))
+            for i in 0..a.row_size {
+                for j in 0..b.row_size {
+                    buffer.push((0..a.col_size).fold(0.0, |acc, ind| {
+                        a.buffer[i + ind * a.row_size].mul_add(b.buffer[j + ind * b.row_size], acc)
+                    }))
                 }
             }
-            Ok(Matrix{
+            Ok(Matrix {
                 buffer,
                 row_size: b.row_size,
-                col_size: a.row_size
+                col_size: a.row_size,
             })
+        } else {
+            Err("Matricies cannot be multiplied, amount of columns of the first one must match amount of rows of the second one (txn)")
         }
-        else{Err("Matricies cannot be multiplied, amount of columns of the first one must match amount of rows of the second one (txn)")}
     }
 
     pub fn t2mult<'a>(a: &Matrix, b: &Matrix) -> Result<Matrix, &'a str> {
-        if a.row_size == b.row_size{
+        if a.row_size == b.row_size {
             let mut buffer = Vec::with_capacity(a.col_size * b.col_size);
-            for i in 0..a.col_size{
-                for j in 0..b.col_size{
-                    buffer.push((0..a.row_size).fold(0.0, |acc, ind| a.buffer[ind + a.row_size*i].mul_add(b.buffer[ind + b.row_size*j], acc)))
+            for i in 0..a.col_size {
+                for j in 0..b.col_size {
+                    buffer.push((0..a.row_size).fold(0.0, |acc, ind| {
+                        a.buffer[ind + a.row_size * i].mul_add(b.buffer[ind + b.row_size * j], acc)
+                    }))
                 }
             }
-            Ok(Matrix{
+            Ok(Matrix {
                 buffer,
                 row_size: b.col_size,
-                col_size: a.col_size
+                col_size: a.col_size,
             })
+        } else {
+            Err("Matricies cannot be multiplied, amount of columns of the first one must match amount of rows of the second one (nxt)")
         }
-        else{Err("Matricies cannot be multiplied, amount of columns of the first one must match amount of rows of the second one (nxt)")}
     }
 
     pub fn mult_inplace(&mut self, a: &Matrix) {
         assert!(self.row_size == a.col_size, "Matricies cannot be multiplied, amount of columns of the first one: {} must match amount of rows of the second one: {}", self.ncols(), a.nrows());
         let mut buffer = Vec::with_capacity(self.col_size * a.row_size);
-            for i in 0..self.col_size{
-                for j in 0..a.row_size{
-                    buffer.push((0..self.row_size).fold(0.0, |acc, ind| self.buffer[ind + self.row_size*i].mul_add(a.buffer[j + ind*a.row_size], acc)))
-                }
+        for i in 0..self.col_size {
+            for j in 0..a.row_size {
+                buffer.push((0..self.row_size).fold(0.0, |acc, ind| {
+                    self.buffer[ind + self.row_size * i]
+                        .mul_add(a.buffer[j + ind * a.row_size], acc)
+                }))
             }
+        }
         self.buffer = buffer;
         self.row_size = a.row_size;
     }
@@ -168,11 +182,14 @@ impl Matrix {
     pub fn t1mult_inplace(&mut self, a: &Matrix) {
         assert!(self.col_size == a.col_size, "Matricies cannot be multiplied, amount of columns of the first one: {} must match amount of rows of the second one: {}", self.nrows(), a.nrows());
         let mut buffer = Vec::with_capacity(self.row_size * a.row_size);
-            for i in 0..self.row_size{
-                for j in 0..a.row_size{
-                    buffer.push((0..self.col_size).fold(0.0, |acc, ind| self.buffer[i + ind*self.row_size].mul_add(a.buffer[j + ind*a.row_size], acc)))
-                }
+        for i in 0..self.row_size {
+            for j in 0..a.row_size {
+                buffer.push((0..self.col_size).fold(0.0, |acc, ind| {
+                    self.buffer[i + ind * self.row_size]
+                        .mul_add(a.buffer[j + ind * a.row_size], acc)
+                }))
             }
+        }
         self.buffer = buffer;
         self.col_size = self.row_size;
         self.row_size = a.row_size;
@@ -181,30 +198,31 @@ impl Matrix {
     pub fn t2mult_inplace(&mut self, a: &Matrix) {
         assert!(self.row_size == a.row_size, "Matricies cannot be multiplied, amount of columns of the first one: {} must match amount of rows of the second one: {}", self.ncols(), a.ncols());
         let mut buffer = Vec::with_capacity(self.col_size * a.col_size);
-            for i in 0..self.col_size{
-                for j in 0..a.col_size{
-                    buffer.push((0..self.row_size).fold(0.0, |acc, ind| self.buffer[ind + self.row_size*i].mul_add(a.buffer[ind + a.row_size*j], acc)))
-                }
+        for i in 0..self.col_size {
+            for j in 0..a.col_size {
+                buffer.push((0..self.row_size).fold(0.0, |acc, ind| {
+                    self.buffer[ind + self.row_size * i]
+                        .mul_add(a.buffer[ind + a.row_size * j], acc)
+                }))
             }
+        }
         self.buffer = buffer;
         self.row_size = a.col_size;
-        
     }
 
-
     pub fn sigmoid(&self) -> Matrix {
-        Matrix { 
+        Matrix {
             row_size: self.row_size,
             col_size: self.col_size,
-            buffer: self.buffer.iter().map(|x| num_sigmoid(*x)).collect()
+            buffer: self.buffer.iter().map(|x| num_sigmoid(*x)).collect(),
         }
     }
 
     pub fn dsigmoid(&self) -> Matrix {
-        Matrix { 
+        Matrix {
             row_size: self.row_size,
             col_size: self.col_size,
-            buffer: self.buffer.iter().map(|x| num_dsigmoid(*x)).collect()
+            buffer: self.buffer.iter().map(|x| num_dsigmoid(*x)).collect(),
         }
     }
 
@@ -213,43 +231,47 @@ impl Matrix {
         Matrix {
             row_size: self.row_size,
             col_size: self.col_size,
-            buffer: zip(&self.buffer, &a.buffer).map(|(x, y)| x*y).collect()
+            buffer: zip(&self.buffer, &a.buffer).map(|(x, y)| x * y).collect(),
         }
     }
 
     pub fn cons_prod(&mut self, x: f64) {
-        for i in self.buffer.iter_mut(){
+        for i in self.buffer.iter_mut() {
             *i *= x
         }
     }
 
-    pub fn cons_prod_copy(&self, x: f64) -> Matrix{
-        Matrix { buffer: self.buffer.iter().map(|i| i*x).collect(), row_size: self.row_size, col_size: self.col_size}
+    pub fn cons_prod_copy(&self, x: f64) -> Matrix {
+        Matrix {
+            buffer: self.buffer.iter().map(|i| i * x).collect(),
+            row_size: self.row_size,
+            col_size: self.col_size,
+        }
     }
 
-    pub fn sum_all_rows(&mut self, other: &Matrix){
+    pub fn sum_all_rows(&mut self, other: &Matrix) {
         assert!(other.row_size == self.row_size && other.col_size == 1);
-        for i in 0..(self.nrows()*self.ncols()){
+        for i in 0..(self.nrows() * self.ncols()) {
             self.buffer[i] += other.buffer[i % other.row_size]
         }
     }
 
-    pub fn sum_of_cols(&self) -> Matrix{
+    pub fn sum_of_cols(&self) -> Matrix {
         let mut buffer = Vec::with_capacity(self.row_size);
-        for i in 0..self.ncols(){
+        for i in 0..self.ncols() {
             let mut x = 0.0;
-            for j in 0..self.nrows(){
-                x += self.buffer[i + j*self.row_size]
+            for j in 0..self.nrows() {
+                x += self.buffer[i + j * self.row_size]
             }
             buffer.push(x)
         }
         Matrix {
             buffer,
             row_size: self.row_size,
-            col_size: 1
+            col_size: 1,
         }
     }
-    pub fn to_vec(self) -> Vec<f64>{
+    pub fn to_vec(self) -> Vec<f64> {
         assert!(self.col_size == 1);
         self.buffer
     }
